@@ -5,6 +5,17 @@
 
 With this script you can receive a notification when a URL changes.
 
+## Before You Start
+
+If you have a site that is expected to change every once in a while, you should
+consider providing an RSS or Atom feed for the site. That [feed should support
+HTTP Conditional GETs](https://fishbowl.pastiche.org/2002/10/21/http_conditional_get_for_rss_hackers).
+
+If no RSS/Atom feed, then please consider providing a web API.
+
+This script is a last resort, for sites that change but don't provide either of
+the two features mentioned above.
+
 ## Getting Started
 
 1. Rename watch\_url.json.sample to watch\_url.json.
