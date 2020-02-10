@@ -24,7 +24,7 @@ the two features mentioned above.
 
 You can specify an output file for logs with the -o flag, like so:
 
-    $ ./watch_url.py -o watch_url.log https://livejournal.com/ &
+    $ ./watch_url.py -o watch_url.log https://ncase.me/ &
     [1] 12345
     $ disown 12345
 
@@ -46,7 +46,7 @@ This notification was sent by email to a phone company that converts email to SM
 
     FRM: user@domainwithemail.com
     SUBJ: Site changed
-    MSG: https://livejournal.com/
+    MSG: https://ncase.me/
          From watch_url.py
 
 ## Customizing watch\_url.json
