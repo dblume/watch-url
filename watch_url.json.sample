@@ -1,0 +1,7 @@
+{
+   "notification":[
+      "ssh",
+      "user@domainwithemail.com",
+      "printf 'URL\\nFrom watch_url.py' | mail -s 'MSG' 5555550100@txt.phoneco.net"
+   ]
+}
