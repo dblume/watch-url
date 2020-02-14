@@ -117,6 +117,7 @@ def main(urls):
             if e.code == 304:
                 logging.debug(f"Url not changed.")
             else:
+                notify(f"Got HTTP error {e.code()}. Continuing.", url)
                 logging.error(f"Got {e.code()} for {url}. Continuing.")
 
     logging.info(f"Exiting. Duration = {time.time() - start_time:2.0f}s.")
