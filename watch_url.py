@@ -49,7 +49,7 @@ def run(command_list):
     return r.stdout
 
 
-def main(urls):
+def main(delay, urls):
     """The main function, does the whole thing."""
     global _notification
     start_time = time.time()
@@ -90,7 +90,7 @@ def main(urls):
     done = False
     send_confirmation_at = time.time() + 10  # seconds
     while not done:
-        time.sleep(5)
+        time.sleep(delay)
         if send_confirmation_at is not None and send_confirmation_at < time.time():
             logging.info(f"Sending a notification that we're running.")
             notify("Watching", url)
@@ -126,6 +126,7 @@ def main(urls):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description="Notify when a URL changes.")
+    parser.add_argument('-d', '--delay', type=float, default=5.0, help='Delay between requests')
     parser.add_argument('-o', '--outfile')
     parser.add_argument('urls', nargs='+', help='URLs to watch')
     args = parser.parse_args()
@@ -137,4 +138,4 @@ if __name__ == '__main__':
                         format='%(asctime)s %(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=logging.INFO)
-    main(args.urls)
+    main(args.delay, args.urls)
