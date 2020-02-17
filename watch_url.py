@@ -10,9 +10,11 @@ import signal
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 import hashlib
+import threading
 
 
 _notification = ['echo', 'URL MSG']
+notify_lock = threading.Lock()
 
 
 def log_exit(sig, frame):
@@ -35,7 +37,8 @@ def get_md5(f):
 
 def notify(msg, url=''):
     """Send a notification to the user."""
-    return run([i.replace('MSG', msg).replace('URL', url) for i in _notification])
+    with notify_lock:
+        return run([i.replace('MSG', msg).replace('URL', url) for i in _notification])
 
 
 def run(command_list):
@@ -49,29 +52,14 @@ def run(command_list):
     return r.stdout
 
 
-def main(delay, urls):
-    """The main function, does the whole thing."""
-    global _notification
-    start_time = time.time()
-    with open(__file__.replace('.py', '.json')) as f:
-       _notification = json.load(f)['notification']
-
-    signal.signal(signal.SIGINT, log_exit)
-    signal.signal(signal.SIGTERM, log_exit)
-
-    logging.info(f'PID={os.getpid()} Started.')
-
-    url = urls[0]  # Just for now.
-    if len(urls) > 1:
-        logging.error(f"I haven't implemented support for multiple URLs yet.")
-        return
-
+def watch(url, delay):
+    """Repeatedly make requests to one URL and watch for changes."""
     # Get ETag and/or Last-Modified, if there is one.
     req = Request(url)
     with urlopen(req) as f:
         if f.getcode() != 200:
             logging.error(f"Got {f.getcode()} for {url}. Exiting.")
-            notify(f"Got {f.getcode()} for {url}. Exiting.")
+            notify(f"Got HTTP {f.getcode()}. Exiting.", url)
             return
         if 'ETag' in f.headers:
             req.add_header('If-None-Match', f.headers['ETag'])
@@ -85,14 +73,14 @@ def main(delay, urls):
             last_modified = None
         md5 = get_md5(f)
 
-    logging.debug(f"ETag={etag} last_modified={last_modified}")
+    logging.debug(f"{url}: ETag={etag} last_modified={last_modified}")
 
     done = False
     send_confirmation_at = time.time() + 10  # seconds
     while not done:
         time.sleep(delay)
         if send_confirmation_at is not None and send_confirmation_at < time.time():
-            logging.info(f"Sending a notification that we're running.")
+            logging.info(f"Sending a notification for {url} that we're running.")
             notify("Watching", url)
             send_confirmation_at = None
         try:
@@ -110,18 +98,17 @@ def main(delay, urls):
                     changed = True
                 if changed:
                     notify("Site changed", url)
-                    logging.info(f"Sending notification of site change.")
+                    logging.info(f"Sending notification of change to {url}.")
                     done = True
                 last_modified = f.headers['Last-Modified']
         except HTTPError as e:
             if e.code == 304:
-                logging.debug(f"Url not changed.")
+                logging.debug(f"{url} not changed.")
             else:
                 notify(f"Got HTTP error {e.code()}. Continuing.", url)
                 logging.error(f"Got {e.code()} for {url}. Continuing.")
 
-    logging.info(f"Exiting. Duration = {time.time() - start_time:2.0f}s.")
-    notify(f"Exiting.")
+    logging.info(f"Stopping for {url}.")
 
 
 if __name__ == '__main__':
@@ -129,13 +116,28 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--delay', type=float, default=5.0, help='Delay between requests')
     parser.add_argument('-o', '--outfile')
     parser.add_argument('urls', nargs='+', help='URLs to watch')
-    args = parser.parse_args()
-    if args.outfile is None:
+    parser_args = parser.parse_args()
+    if parser_args.outfile is None:
         handler = logging.StreamHandler(sys.stdout)
     else:
-        handler = logging.FileHandler(args.outfile)
+        handler = logging.FileHandler(parser_args.outfile)
     logging.basicConfig(handlers=(handler,),
-                        format='%(asctime)s %(levelname)s %(message)s',
+                        format='%(asctime)s %(levelname)s %(thread)d %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=logging.INFO)
-    main(args.delay, args.urls)
+
+    with open(__file__.replace('.py', '.json')) as f:
+       _notification = json.load(f)['notification']
+
+    signal.signal(signal.SIGINT, log_exit)
+    signal.signal(signal.SIGTERM, log_exit)
+
+    logging.info(f'PID={os.getpid()} Started.')
+    threads = []
+    for url in parser_args.urls:
+        t = threading.Thread(target=watch, args=(url, parser_args.delay), daemon=True)
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
+    logging.info(f'PID={os.getpid()} All watchers exited.')
