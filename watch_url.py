@@ -133,11 +133,14 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, log_exit)
 
     logging.info(f'PID={os.getpid()} Started.')
-    threads = []
-    for url in parser_args.urls:
-        t = threading.Thread(target=watch, args=(url, parser_args.delay), daemon=True)
-        t.start()
-        threads.append(t)
-    for t in threads:
-        t.join()
+    if len(parser_args.urls) == 1:
+        watch(parser_args.urls[0], parser_args.delay)
+    else:
+        threads = []
+        for url in parser_args.urls:
+            t = threading.Thread(target=watch, args=(url, parser_args.delay), daemon=True)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
     logging.info(f'PID={os.getpid()} All watchers exited.')
