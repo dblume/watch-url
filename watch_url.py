@@ -92,7 +92,8 @@ def watch(url, delay):
                 changed = False
                 if 'ETag' in f.headers and f.headers['ETag'] != etag:
                     changed = True
-                if 'Last-Modified' in f.headers and f.headers['Last-Modified'] != last_modified:
+                if ('Last-Modified' in f.headers and
+                    f.headers['Last-Modified'] != last_modified):
                     changed = True
                 if not changed and md5 != get_md5(f):
                     changed = True
@@ -113,7 +114,8 @@ def watch(url, delay):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description="Notify when a URL changes.")
-    parser.add_argument('-d', '--delay', type=float, default=5.0, help='Delay between requests')
+    parser.add_argument('-d', '--delay', type=float, default=5.0,
+                        help='Delay between requests')
     parser.add_argument('-o', '--outfile')
     parser.add_argument('urls', nargs='+', help='URLs to watch')
     parser_args = parser.parse_args()
@@ -132,13 +134,15 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, log_exit)
     signal.signal(signal.SIGTERM, log_exit)
 
-    logging.info(f'PID={os.getpid()} Started.')
+    logging.info(f'PID={os.getpid()} Starting with -d '
+                 f'{parser_args.delay} {" ".join(parser_args.urls)}')
     if len(parser_args.urls) == 1:
         watch(parser_args.urls[0], parser_args.delay)
     else:
         threads = []
         for url in parser_args.urls:
-            t = threading.Thread(target=watch, args=(url, parser_args.delay), daemon=True)
+            t = threading.Thread(target=watch, args=(url, parser_args.delay),
+                                 daemon=True)
             t.start()
             threads.append(t)
         for t in threads:
