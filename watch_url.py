@@ -11,20 +11,21 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 import hashlib
 import threading
+from typing import Optional, BinaryIO, List
 
 
 _notification = ['echo', 'URL MSG']
 notify_lock = threading.Lock()
 
 
-def log_exit(sig, frame):
+def log_exit(sig: int, frame) -> None:
     """Notify the user when a signal terminates the process."""
     logging.warning(f"PID={os.getpid()} signal={signal.Signals(sig).name} Exiting.")
     notify('Watcher exiting.')
     sys.exit(0)
 
 
-def get_md5(f):
+def get_md5(f: BinaryIO) -> str:
     """Make an MD5 hash of the page's contents."""
     BLOCKSIZE = 65536
     hasher = hashlib.md5()
@@ -35,13 +36,13 @@ def get_md5(f):
     return hasher.hexdigest()
 
 
-def notify(msg, url=''):
+def notify(msg: str, url: str='') -> str:
     """Send a notification to the user."""
     with notify_lock:
         return run([i.replace('MSG', msg).replace('URL', url) for i in _notification])
 
 
-def run(command_list):
+def run(command_list: List[str]) -> str:
     """Pass in a linux command, get back the stdout."""
     r = subprocess.run(command_list, stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE, encoding='utf-8')
@@ -52,7 +53,7 @@ def run(command_list):
     return r.stdout
 
 
-def watch(url, delay):
+def watch(url: str, delay: float) -> None:
     """Repeatedly make requests to one URL and watch for changes."""
     # Get ETag and/or Last-Modified, if there is one.
     req = Request(url)
@@ -76,7 +77,7 @@ def watch(url, delay):
     logging.debug(f"{url}: ETag={etag} last_modified={last_modified}")
 
     done = False
-    send_confirmation_at = time.time() + 10  # seconds
+    send_confirmation_at: Optional[float] = time.time() + 10  # seconds
     while not done:
         time.sleep(delay)
         if send_confirmation_at is not None and send_confirmation_at < time.time():
@@ -106,8 +107,8 @@ def watch(url, delay):
             if e.code == 304:
                 logging.debug(f"{url} not changed.")
             else:
-                notify(f"Got HTTP error {e.code()}. Continuing.", url)
-                logging.error(f"Got {e.code()} for {url}. Continuing.")
+                notify(f"Got HTTP error {e.code}. Continuing.", url)
+                logging.error(f"Got {e.code} for {url}. Continuing.")
 
     logging.info(f"Stopping for {url}.")
 
